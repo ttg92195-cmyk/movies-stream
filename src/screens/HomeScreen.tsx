@@ -27,7 +27,9 @@ import ErrorMessage from '../components/ErrorMessage';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../navigation/AppNavigator';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'Home'> & {
+  headerComponent?: React.ReactNode;
+};
 
 const CATEGORIES: Category[] = [
   {key: 'trending', label: 'Trending', icon: 'trending-up'},
@@ -37,7 +39,7 @@ const CATEGORIES: Category[] = [
   {key: 'upcoming', label: 'Upcoming', icon: 'schedule'},
 ];
 
-const HomeScreen: React.FC<Props> = ({navigation}) => {
+const HomeScreen: React.FC<Props> = ({navigation, headerComponent}) => {
   const [activeCategory, setActiveCategory] = useState<MovieCategory>('trending');
   const [trending, setTrending] = useState<Movie[]>([]);
   const [popular, setPopular] = useState<Movie[]>([]);
@@ -113,28 +115,36 @@ const HomeScreen: React.FC<Props> = ({navigation}) => {
 
   if (loading && !refreshing) {
     return (
-      <SafeAreaView style={styles.safe}>
-        <View style={styles.container}>
-          <LoadingState />
-        </View>
-      </SafeAreaView>
+      <View style={styles.safe}>
+        {headerComponent}
+        <SafeAreaView style={styles.safe} edges={['bottom']}>
+          <View style={styles.container}>
+            <LoadingState />
+          </View>
+        </SafeAreaView>
+      </View>
     );
   }
 
   if (error && trending.length === 0) {
     return (
-      <SafeAreaView style={styles.safe}>
-        <View style={styles.container}>
-          <ErrorMessage message={error} onRetry={() => loadAll()} />
-        </View>
-      </SafeAreaView>
+      <View style={styles.safe}>
+        {headerComponent}
+        <SafeAreaView style={styles.safe} edges={['bottom']}>
+          <View style={styles.container}>
+            <ErrorMessage message={error} onRetry={() => loadAll()} />
+          </View>
+        </SafeAreaView>
+      </View>
     );
   }
 
   const featured = trending[0];
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <View style={styles.safe}>
+      {headerComponent}
+      <SafeAreaView style={styles.safe} edges={['bottom']}>
       <ScrollView
         style={styles.container}
         showsVerticalScrollIndicator={false}
@@ -197,7 +207,8 @@ const HomeScreen: React.FC<Props> = ({navigation}) => {
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 };
 

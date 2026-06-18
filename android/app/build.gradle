@@ -71,6 +71,33 @@ android {
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
     }
+
+    // === VECTOR ICONS FONT BUNDLING ===
+    // Make src/main/assets an explicit source dir so any files dropped
+    // there (including the copied .ttf fonts) get bundled into the APK.
+    sourceSets {
+        main {
+            assets.srcDirs += ['src/main/assets']
+        }
+    }
+}
+
+// === COPY VECTOR-ICONS FONTS INTO ASSETS BEFORE BUILD ===
+// Without this, react-native-vector-icons fonts are NOT included in
+// release APKs (especially with Hermes), causing icons to render as
+// [X] tofu boxes. This task runs before every mergeAssets step.
+afterEvaluate {
+    def copyIconFonts = tasks.create('copyIconFonts', Copy) {
+        description = 'Copy react-native-vector-icons .ttf fonts into Android assets'
+        group = 'react-native'
+        from("../../node_modules/react-native-vector-icons/Fonts") {
+            include '*.ttf'
+        }
+        into 'src/main/assets/fonts'
+    }
+    android.applicationVariants.all { variant ->
+        variant.mergeAssetsProvider.get().dependsOn(copyIconFonts)
+    }
 }
 
 dependencies {
