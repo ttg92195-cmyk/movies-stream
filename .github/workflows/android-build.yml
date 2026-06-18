@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Android Release APK
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
 
 jobs:
   build-android:
-    name: Build APK
+    name: Build Release APK
     runs-on: ubuntu-latest
 
     steps:
@@ -21,7 +21,6 @@ jobs:
         with:
           node-version: 22
           # NOTE: 'cache: npm' removed because we don't commit package-lock.json.
-          # Caching is optional and not required for the build to succeed.
 
       - name: Setup Java JDK
         uses: actions/setup-java@v4
@@ -44,15 +43,14 @@ jobs:
 
       - name: Print npm package versions
         run: |
-          echo "=== React Native CLI check ==="
-          npx react-native --version 2>&1 || echo "react-native CLI does not support --version flag on this runner (expected)"
           echo "=== Installed packages (depth=0) ==="
           npm list --depth=0 2>&1 || true
           echo "=== Critical packages for bundling ==="
           npm ls babel-plugin-module-resolver 2>&1 || true
           npm ls @react-native/babel-preset 2>&1 || true
+          npm ls react-native-vector-icons 2>&1 || true
 
-      - name: Generate debug keystore (if missing)
+      - name: Generate debug keystore (used for release signing in CI)
         working-directory: android/app
         run: |
           if [ ! -f debug.keystore ]; then
@@ -62,15 +60,16 @@ jobs:
             echo "debug.keystore already exists."
           fi
 
-      - name: Pre-build JavaScript bundle (so APK runs without Metro server)
+      - name: Pre-build JavaScript bundle (production mode)
         run: |
           echo "=== Creating assets directory ==="
           mkdir -p android/app/src/main/assets
           echo "=== Running Metro bundler to generate index.android.bundle ==="
           # --dev false = production build (smaller, optimized)
-          # This step is CRITICAL for standalone APKs (debug or release) —
-          # without it, the app shows 'Unable to load script' on launch
-          # because it tries to fetch the bundle from Metro dev server.
+          # This step is CRITICAL for standalone APKs — without it, the app
+          # shows 'Unable to load script' on launch because it tries to
+          # fetch the bundle from a Metro dev server that doesn't exist
+          # on the user's phone.
           npx react-native bundle \
             --platform android \
             --dev false \
@@ -87,32 +86,15 @@ jobs:
           which gradle
           gradle --version
 
-      - name: Build Debug APK
+      - name: Build Release APK (signed with debug.keystore)
         working-directory: android
-        run: gradle assembleDebug --no-daemon --stacktrace --warning-mode all
-
-      - name: Build Release APK (debug-signed for CI)
-        working-directory: android
-        run: gradle assembleRelease --no-daemon --stacktrace
-        continue-on-error: true
-        id: release_build
+        run: gradle assembleRelease --no-daemon --stacktrace --warning-mode all
 
       - name: List built APKs
         if: always()
         run: |
-          echo "=== Debug APK ==="
-          find android/app/build/outputs/apk/debug -name "*.apk" -exec ls -lh {} \; || true
           echo "=== Release APK ==="
           find android/app/build/outputs/apk/release -name "*.apk" -exec ls -lh {} \; || true
-
-      - name: Upload Debug APK
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: moviesstream-debug-apk
-          path: android/app/build/outputs/apk/debug/*.apk
-          retention-days: 30
-          if-no-files-found: warn
 
       - name: Upload Release APK
         uses: actions/upload-artifact@v4
@@ -137,19 +119,20 @@ jobs:
       - name: Summary
         if: always()
         run: |
-          echo "## APK Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "## Release APK Build Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          if [ -f android/app/build/outputs/apk/debug/app-debug.apk ]; then
-            echo "✅ Debug APK built successfully" >> $GITHUB_STEP_SUMMARY
-            echo "   Size: $(du -h android/app/build/outputs/apk/debug/app-debug.apk | cut -f1)" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "❌ Debug APK build failed — check logs above" >> $GITHUB_STEP_SUMMARY
-          fi
           if [ -f android/app/build/outputs/apk/release/app-release.apk ]; then
             echo "✅ Release APK built successfully" >> $GITHUB_STEP_SUMMARY
             echo "   Size: $(du -h android/app/build/outputs/apk/release/app-release.apk | cut -f1)" >> $GITHUB_STEP_SUMMARY
+            echo "   Path: android/app/build/outputs/apk/release/app-release.apk" >> $GITHUB_STEP_SUMMARY
           else
-            echo "⚠️ Release APK not built (expected if minify/proguard issues)" >> $GITHUB_STEP_SUMMARY
+            echo "❌ Release APK build failed — check logs above" >> $GITHUB_STEP_SUMMARY
           fi
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Download APKs from the Artifacts section at the bottom of this workflow run." >> $GITHUB_STEP_SUMMARY
+          echo "### Build Configuration" >> $GITHUB_STEP_SUMMARY
+          echo "- Build type: **Release only** (Debug build skipped)" >> $GITHUB_STEP_SUMMARY
+          echo "- Signing: debug.keystore (CI temporary)" >> $GITHUB_STEP_SUMMARY
+          echo "- JS Bundle: pre-built with \`--dev false\` (production mode)" >> $GITHUB_STEP_SUMMARY
+          echo "- Vector Icons: copied via Gradle copyIconFonts task" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Download the Release APK from the Artifacts section below." >> $GITHUB_STEP_SUMMARY

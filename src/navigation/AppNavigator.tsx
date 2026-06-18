@@ -1,22 +1,24 @@
 /**
- * App Navigation — V2
+ * App Navigation — V3 (Fixed: navigator children validation)
  *
  * Structure:
  *   App
  *   └─ AuthProvider
- *      └─ GestureHandlerRootView
- *         └─ BottomTabs (Home / Movies / Series / Settings)
- *            └─ Each tab is a NativeStackNavigator
+ *      └─ BottomTabs (Home / Movies / Series / Settings)
+ *         └─ Each tab is a NativeStackNavigator
  *
- * Sidebar menu is implemented as a custom modal overlay
- * (not react-navigation/drawer) for full control over role-based items.
+ * Sidebar menu is a custom modal overlay.
  *
- * Menu items navigate to a "Menu" stack containing:
- *   - Download, Recent, Genres, VIP, Login, Profile,
- *     AdminPanel, TMDBGenerator
+ * CRITICAL FIX in V3:
+ *   React Navigation v6 requires that <Stack.Navigator> contains ONLY
+ *   <Stack.Screen>, <Stack.Group>, or <React.Fragment> as direct children.
+ *   Function-call children like <SharedStackScreens /> are NOT allowed.
+ *   The previous code crashed at runtime with:
+ *     "A navigator can only contain 'Screen', 'Group' or 'React.Fragment'"
  *
- * The Menu stack is rendered on top of the bottom tabs,
- * so menu items appear above the tab bar.
+ *   Fix: build arrays of <Stack.Screen> elements (one for shared routes,
+ *   one for menu routes) and spread them as children of each Stack.Navigator.
+ *   React.Fragment wrapping each Spread preserves the children validation.
  */
 
 import React, {useState, useCallback} from 'react';
@@ -93,7 +95,6 @@ const AppDarkTheme = {
   },
 };
 
-// === SCREEN OPTIONS ===
 const stackScreenOptions = {
   headerStyle: {backgroundColor: COLORS.background},
   headerTintColor: COLORS.textPrimary,
@@ -101,126 +102,133 @@ const stackScreenOptions = {
   contentStyle: {backgroundColor: COLORS.background},
 };
 
-// === SHARED STACK (used by all 4 tabs) ===
-const SharedStackScreens = () => (
-  <Stack.Group>
-    <Stack.Screen
-      name="MovieDetail"
-      component={MovieDetailScreen}
-      options={({route}) => ({title: route.params.movie.title})}
-    />
-    <Stack.Screen
-      name="VideoPlayer"
-      component={VideoPlayerScreen}
-      options={{headerShown: false, orientation: 'landscape'}}
-    />
-    <Stack.Screen
-      name="Search"
-      component={SearchScreen}
-      options={{headerShown: false}}
-    />
-    <Stack.Screen
-      name="Favorites"
-      component={FavoritesScreen}
-      options={{headerShown: false}}
-    />
-  </Stack.Group>
-);
+// === SHARED SCREENS (built once, spread into each Stack.Navigator) ===
+// These are <Stack.Screen> elements (which are valid Navigator children
+// when spread inside a Fragment).
+const sharedScreens = [
+  <Stack.Screen
+    key="MovieDetail"
+    name="MovieDetail"
+    component={MovieDetailScreen}
+    options={({route}: {route: any}) => ({title: route.params.movie.title})}
+  />,
+  <Stack.Screen
+    key="VideoPlayer"
+    name="VideoPlayer"
+    component={VideoPlayerScreen}
+    options={{headerShown: false, orientation: 'landscape'}}
+  />,
+  <Stack.Screen
+    key="Search"
+    name="Search"
+    component={SearchScreen}
+    options={{headerShown: false}}
+  />,
+  <Stack.Screen
+    key="Favorites"
+    name="Favorites"
+    component={FavoritesScreen}
+    options={{headerShown: false}}
+  />,
+];
 
-// === MENU STACK SCREENS ===
-const MenuStackScreens = () => (
-  <Stack.Group>
-    <Stack.Screen
-      name="MenuDownload"
-      component={(props: any) => (
-        <PlaceholderScreen
-          title="Downloads"
-          subtitle="Your downloaded movies and series will appear here."
-          icon="download"
-        />
-      )}
-      options={{title: 'Download'}}
-    />
-    <Stack.Screen
-      name="MenuRecent"
-      component={(props: any) => (
-        <PlaceholderScreen
-          title="Recently Viewed"
-          subtitle="Movies and series you've watched recently."
-          icon="history"
-        />
-      )}
-      options={{title: 'Recent'}}
-    />
-    <Stack.Screen
-      name="MenuGenres"
-      component={(props: any) => (
-        <PlaceholderScreen
-          title="Genres"
-          subtitle="Browse content by genre (Action, Comedy, Drama, etc.)"
-          icon="category"
-        />
-      )}
-      options={{title: 'Genres'}}
-    />
-    <Stack.Screen
-      name="MenuVIP"
-      component={(props: any) => (
-        <PlaceholderScreen
-          title="VIP Content"
-          subtitle="Premium content exclusive to VIP members."
-          icon="star"
-        />
-      )}
-      options={{title: 'VIP'}}
-    />
-    <Stack.Screen
-      name="MenuLogin"
-      component={LoginScreen}
-      options={{title: 'Login'}}
-    />
-    <Stack.Screen
-      name="MenuProfile"
-      component={ProfileScreen}
-      options={{title: 'Profile'}}
-    />
-    <Stack.Screen
-      name="MenuAdminPanel"
-      component={(props: any) => (
-        <PlaceholderScreen
-          title="Admin Panel"
-          subtitle="Manage users, content, and app settings."
-          icon="admin-panel-settings"
-          adminOnly
-        />
-      )}
-      options={{title: 'Admin Panel'}}
-    />
-    <Stack.Screen
-      name="MenuTMDBGenerator"
-      component={(props: any) => (
-        <PlaceholderScreen
-          title="TMDB Generator"
-          subtitle="Fetch and generate movie data from TMDB API."
-          icon="auto-awesome"
-          adminOnly
-        />
-      )}
-      options={{title: 'TMDB Generator'}}
-    />
-  </Stack.Group>
-);
+// === MENU SCREENS ===
+const menuScreens = [
+  <Stack.Screen
+    key="MenuDownload"
+    name="MenuDownload"
+    options={{title: 'Download'}}>
+    {() => (
+      <PlaceholderScreen
+        title="Downloads"
+        subtitle="Your downloaded movies and series will appear here."
+        icon="download"
+      />
+    )}
+  </Stack.Screen>,
+  <Stack.Screen
+    key="MenuRecent"
+    name="MenuRecent"
+    options={{title: 'Recent'}}>
+    {() => (
+      <PlaceholderScreen
+        title="Recently Viewed"
+        subtitle="Movies and series you've watched recently."
+        icon="history"
+      />
+    )}
+  </Stack.Screen>,
+  <Stack.Screen
+    key="MenuGenres"
+    name="MenuGenres"
+    options={{title: 'Genres'}}>
+    {() => (
+      <PlaceholderScreen
+        title="Genres"
+        subtitle="Browse content by genre (Action, Comedy, Drama, etc.)"
+        icon="category"
+      />
+    )}
+  </Stack.Screen>,
+  <Stack.Screen
+    key="MenuVIP"
+    name="MenuVIP"
+    options={{title: 'VIP'}}>
+    {() => (
+      <PlaceholderScreen
+        title="VIP Content"
+        subtitle="Premium content exclusive to VIP members."
+        icon="star"
+      />
+    )}
+  </Stack.Screen>,
+  <Stack.Screen
+    key="MenuLogin"
+    name="MenuLogin"
+    component={LoginScreen}
+    options={{title: 'Login'}}
+  />,
+  <Stack.Screen
+    key="MenuProfile"
+    name="MenuProfile"
+    component={ProfileScreen}
+    options={{title: 'Profile'}}
+  />,
+  <Stack.Screen
+    key="MenuAdminPanel"
+    name="MenuAdminPanel"
+    options={{title: 'Admin Panel'}}>
+    {() => (
+      <PlaceholderScreen
+        title="Admin Panel"
+        subtitle="Manage users, content, and app settings."
+        icon="admin-panel-settings"
+        adminOnly
+      />
+    )}
+  </Stack.Screen>,
+  <Stack.Screen
+    key="MenuTMDBGenerator"
+    name="MenuTMDBGenerator"
+    options={{title: 'TMDB Generator'}}>
+    {() => (
+      <PlaceholderScreen
+        title="TMDB Generator"
+        subtitle="Fetch and generate movie data from TMDB API."
+        icon="auto-awesome"
+        adminOnly
+      />
+    )}
+  </Stack.Screen>,
+];
 
 // === HOME STACK ===
-const HomeStack = ({onMenuToggle, onSearchNavigate}: {
+const HomeStack: React.FC<{
   onMenuToggle: () => void;
   onSearchNavigate: () => void;
-}) => (
+}> = ({onMenuToggle, onSearchNavigate}) => (
   <Stack.Navigator screenOptions={stackScreenOptions}>
-    <Stack.Screen
-      name="Home"
-      options={{headerShown: false}}
-    >
+    <Stack.Screen name="Home" options={{headerShown: false}}>
       {(props: any) => (
         <HomeScreen
           {...props}
@@ -233,52 +241,52 @@ const HomeStack = ({onMenuToggle, onSearchNavigate}: {
         />
       )}
     </Stack.Screen>
-    <SharedStackScreens />
-    <MenuStackScreens />
+    {sharedScreens}
+    {menuScreens}
   </Stack.Navigator>
 );
 
 // === MOVIES STACK ===
-const MoviesStack = () => (
+const MoviesStack: React.FC = () => (
   <Stack.Navigator screenOptions={stackScreenOptions}>
     <Stack.Screen
       name="Movies"
       component={MoviesScreen}
       options={{headerShown: false}}
     />
-    <SharedStackScreens />
-    <MenuStackScreens />
+    {sharedScreens}
+    {menuScreens}
   </Stack.Navigator>
 );
 
 // === SERIES STACK ===
-const SeriesStack = () => (
+const SeriesStack: React.FC = () => (
   <Stack.Navigator screenOptions={stackScreenOptions}>
     <Stack.Screen
       name="Series"
       component={SeriesScreen}
       options={{headerShown: false}}
     />
-    <SharedStackScreens />
-    <MenuStackScreens />
+    {sharedScreens}
+    {menuScreens}
   </Stack.Navigator>
 );
 
 // === SETTINGS STACK ===
-const SettingsStack = () => (
+const SettingsStack: React.FC = () => (
   <Stack.Navigator screenOptions={stackScreenOptions}>
     <Stack.Screen
       name="Settings"
       component={SettingsScreen}
       options={{headerShown: false}}
     />
-    <SharedStackScreens />
-    <MenuStackScreens />
+    {sharedScreens}
+    {menuScreens}
   </Stack.Navigator>
 );
 
 // === MAIN APP NAVIGATOR ===
-const AppNavigator = () => {
+const AppNavigator: React.FC = () => {
   const [menuVisible, setMenuVisible] = useState(false);
   const navigationRef = React.useRef<any>(null);
 
@@ -301,7 +309,6 @@ const AppNavigator = () => {
 
     const routeName = routeMap[key];
     if (routeName) {
-      // Navigate within the current tab's stack
       try {
         navigationRef.current?.navigate(routeName);
       } catch (err) {
@@ -319,10 +326,7 @@ const AppNavigator = () => {
   }, []);
 
   return (
-    <NavigationContainer
-      theme={AppDarkTheme}
-      ref={navigationRef}
-    >
+    <NavigationContainer theme={AppDarkTheme} ref={navigationRef}>
       <Tab.Navigator
         screenOptions={{
           headerShown: false,

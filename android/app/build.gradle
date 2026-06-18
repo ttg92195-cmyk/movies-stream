@@ -58,17 +58,29 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        // Release signing config — uses debug.keystore for CI builds.
+        // In production, replace with your own keystore (kept in GitHub Secrets).
+        release {
+            storeFile file('debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // For CI builds we fall back to debug keystore so the APK can still be installed.
-            signingConfig signingConfigs.debug
+            // Use the release signing config (defined above).
+            // This makes `gradle assembleRelease` produce a signed,
+            // installable APK directly without any manual signing step.
+            signingConfig signingConfigs.release
             minifyEnabled enableProguardInReleaseBuilds
+            shrinkResources false
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+            // Ensure JS bundle + assets are bundled into the release APK
+            // (RN gradle plugin does this automatically when bundled here)
         }
     }
 
