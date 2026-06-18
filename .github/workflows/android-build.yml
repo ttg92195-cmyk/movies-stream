@@ -33,10 +33,27 @@ jobs:
         with:
           gradle-version: '8.7'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          packages: 'tools platform-tools build-tools;35.0.0 platforms;android-35'
+      - name: Verify Android SDK (preinstalled on runner)
+        run: |
+          echo "=== Android SDK location ==="
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+          ls -la $ANDROID_HOME 2>&1 | head -20 || true
+          echo "=== Available platforms ==="
+          ls $ANDROID_HOME/platforms 2>&1 || true
+          echo "=== Available build-tools ==="
+          ls $ANDROID_HOME/build-tools 2>&1 || true
+          # Make sure we have API 35 platform + build-tools; if not, install.
+          if [ ! -d "$ANDROID_HOME/platforms/android-35" ]; then
+            echo "Installing platforms;android-35..."
+            yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-35" > /dev/null 2>&1 || true
+          fi
+          if [ ! -d "$ANDROID_HOME/build-tools/35.0.0" ]; then
+            echo "Installing build-tools;35.0.0..."
+            yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "build-tools;35.0.0" > /dev/null 2>&1 || true
+          fi
+          echo "=== Final platforms ==="
+          ls $ANDROID_HOME/platforms 2>&1 || true
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund --legacy-peer-deps
