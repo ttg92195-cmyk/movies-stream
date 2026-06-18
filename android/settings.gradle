@@ -1,6 +1,22 @@
-pluginManagement { includeBuild("../node_modules/@react-native/gradle-plugin") }
+// Settings file for React Native 0.74
+// Note: pluginManagement must come first so the gradle-plugin composite build
+// is on the classpath before the plugins {} block resolves the settings plugin.
+pluginManagement {
+    includeBuild("../node_modules/@react-native/gradle-plugin")
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
 plugins { id("com.facebook.react.settings") }
-extensions.configure(com.facebook.react.settings.ReactSettingsExtension){ ex -> ex.autolinkLibrariesFromCommand() }
+
+// Configure React Native autolink — use a string name to avoid classpath lookup issues
+extensions.configure("ReactSettingsExtension") { ex ->
+    ex.autolinkLibrariesFromCommand()
+}
+
 rootProject.name = 'moviesstream'
 include ':app'
 includeBuild('../node_modules/@react-native/gradle-plugin')
