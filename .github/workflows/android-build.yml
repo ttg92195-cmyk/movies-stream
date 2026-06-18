@@ -45,9 +45,12 @@ jobs:
       - name: Print npm package versions
         run: |
           echo "=== React Native CLI check ==="
-          npx react-native --version || true
-          echo "=== Installed packages ==="
-          npm list --depth=0 || true
+          npx react-native --version 2>&1 || echo "react-native CLI does not support --version flag on this runner (expected)"
+          echo "=== Installed packages (depth=0) ==="
+          npm list --depth=0 2>&1 || true
+          echo "=== Critical packages for bundling ==="
+          npm ls babel-plugin-module-resolver 2>&1 || true
+          npm ls @react-native/babel-preset 2>&1 || true
 
       - name: Generate debug keystore (if missing)
         working-directory: android/app
