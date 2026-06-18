@@ -8,7 +8,7 @@ import React from 'react';
 import {View, Text, StyleSheet, SafeAreaView} from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
-import {COLORS, SPACING, FONT_SIZE, FONT_WEIGHT} from '../theme/colors';
+import {COLORS, SPACING, FONT_SIZE, FONT_WEIGHT} from '../../theme/colors';
 
 interface PlaceholderScreenProps {
   title: string;
