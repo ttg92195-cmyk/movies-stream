@@ -59,6 +59,26 @@ jobs:
             echo "debug.keystore already exists."
           fi
 
+      - name: Pre-build JavaScript bundle (so APK runs without Metro server)
+        run: |
+          echo "=== Creating assets directory ==="
+          mkdir -p android/app/src/main/assets
+          echo "=== Running Metro bundler to generate index.android.bundle ==="
+          # --dev false = production build (smaller, optimized)
+          # This step is CRITICAL for standalone APKs (debug or release) —
+          # without it, the app shows 'Unable to load script' on launch
+          # because it tries to fetch the bundle from Metro dev server.
+          npx react-native bundle \
+            --platform android \
+            --dev false \
+            --entry-file index.js \
+            --bundle-output android/app/src/main/assets/index.android.bundle \
+            --assets-dest android/app/src/main/res \
+            --reset-cache
+          echo "=== Bundle generated successfully ==="
+          ls -lh android/app/src/main/assets/index.android.bundle
+          echo "=== Bundle size: $(du -h android/app/src/main/assets/index.android.bundle | cut -f1) ==="
+
       - name: Verify Gradle installation
         run: |
           which gradle
@@ -67,8 +87,6 @@ jobs:
       - name: Build Debug APK
         working-directory: android
         run: gradle assembleDebug --no-daemon --stacktrace --warning-mode all
-        continue-on-error: true
-        id: debug_build
 
       - name: Build Release APK (debug-signed for CI)
         working-directory: android
