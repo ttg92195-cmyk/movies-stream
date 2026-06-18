@@ -1,0 +1,4 @@
+/**
+ * Watchman config (empty for now)
+ */
+module.exports = {};
