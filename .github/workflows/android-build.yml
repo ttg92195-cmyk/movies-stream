@@ -59,23 +59,20 @@ jobs:
             echo "debug.keystore already exists."
           fi
 
-      - name: Generate Gradle Wrapper
-        working-directory: android
+      - name: Verify Gradle installation
         run: |
-          # Generate gradlew script using the installed gradle
-          gradle wrapper --gradle-version 8.7 --distribution-type bin
-          chmod +x gradlew
-          ls -la gradlew gradle/wrapper/
+          which gradle
+          gradle --version
 
       - name: Build Debug APK
         working-directory: android
-        run: ./gradlew assembleDebug --no-daemon --stacktrace --warning-mode all
+        run: gradle assembleDebug --no-daemon --stacktrace --warning-mode all
         continue-on-error: true
         id: debug_build
 
       - name: Build Release APK (debug-signed for CI)
         working-directory: android
-        run: ./gradlew assembleRelease --no-daemon --stacktrace
+        run: gradle assembleRelease --no-daemon --stacktrace
         continue-on-error: true
         id: release_build
 
