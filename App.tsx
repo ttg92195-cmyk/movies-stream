@@ -25,7 +25,6 @@ LogBox.ignoreLogs([
   'ViewPropTypes will be removed',
   'ColorPropType will be removed',
   'Sending `onAnimatedEvent` with no listeners registered',
-  'Reanimated 2 failed to create a worklet',
 ]);
 
 const App: React.FC = () => {
