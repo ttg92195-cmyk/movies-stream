@@ -100,9 +100,25 @@ afterEvaluate {
     }
 }
 
+// Top-level dependency configurations to force-resolve conflicts.
+// androidx.core:core:1.16.0 (pulled in by some libraries) requires AGP 8.6+,
+// but we're on AGP 8.2.1 (mandated by @react-native/gradle-plugin@0.74.85).
+// We force-downgrade androidx.core to 1.13.1 which works with AGP 8.2.1.
+configurations.all {
+    resolutionStrategy {
+        force 'androidx.core:core:1.13.1'
+        force 'androidx.core:core-ktx:1.13.1'
+        force 'androidx.activity:activity:1.8.2'
+        force 'androidx.fragment:fragment:1.6.2'
+    }
+}
+
 dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
+    // Explicitly pin androidx.core to a version compatible with AGP 8.2.1
+    implementation("androidx.core:core:1.13.1")
+    implementation("androidx.core:core-ktx:1.13.1")
 
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
